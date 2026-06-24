@@ -1,0 +1,6 @@
+market_intelligence:
+  skill_gap_threshold_pct: 10    # skill must appear in >=N% of jobs to count as a market signal
+  cache_ttl_seconds: 3600        # Redis cache duration for raw analytics and insights (seconds)
+  heat_window_days: 7            # rolling window for market heat comparison (days)
+  min_jobs_for_insights: 5       # minimum discovered jobs before running insight generation
+  salary_sample_min: 2           # minimum job count for a salary band to be statistically valid

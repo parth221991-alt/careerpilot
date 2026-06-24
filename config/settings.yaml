@@ -1,0 +1,82 @@
+app:
+  name: CareerPilot
+  version: "1.0.0"
+  port: 3003
+
+ai:
+  reasoning_model: "claude-sonnet-4-6"
+  throughput_model: "claude-haiku-4-5-20251001"
+  embedding_model: "voyage-3"
+  embedding_dimensions: 1024
+  max_tokens: 8096
+  system_prompt_cache: true
+
+qdrant:
+  career_vault_collection: "career_vault"
+  jobs_collection: "jobs"
+
+discovery:
+  max_jobs_per_platform_per_run: 100
+  lookback_days: 3
+  match_score_threshold_notify: 80
+  match_score_threshold_apply: 65
+  playwright_timeout_ms: 60000
+  headless: true
+  user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
+
+apply_limits:
+  linkedin:
+    daily_max: 25
+    delay_between_sec: 45
+    easy_apply_only: true
+  naukri:
+    daily_max: 20
+    delay_between_sec: 30
+  indeed:
+    daily_max: 15
+    delay_between_sec: 60
+  company:
+    daily_max: 10
+    delay_between_sec: 90
+
+resume:
+  ats_min_score: 65
+  max_pages: 2
+  max_word_count: 800
+  min_word_count: 300
+
+scheduler:
+  job_discovery_cron: "0 8 * * *"
+  email_poll_interval_sec: 300
+  apply_window_start: "09:00"
+  apply_window_end: "18:00"
+  timezone: "Asia/Kolkata"
+  market_intelligence_cron: "0 6 * * 1"
+
+gmail:
+  scopes:
+    - "https://www.googleapis.com/auth/gmail.readonly"
+    - "https://www.googleapis.com/auth/gmail.modify"
+  career_keywords:
+    - interview
+    - application
+    - opportunity
+    - position
+    - offer
+    - assessment
+    - shortlist
+    - selected
+    - rejected
+    - regret
+    - hire
+    - recruiter
+
+redis:
+  job_dedup_ttl_sec: 604800     # 7 days
+  market_cache_ttl_sec: 86400   # 24 hours
+  session_cache_ttl_sec: 3600   # 1 hour
+
+blacklist:
+  companies: []
+  title_keywords: []
+  locations: []
