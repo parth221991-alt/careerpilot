@@ -6,8 +6,12 @@ import { scoreJobMatch } from '@/lib/claude/agents/DiscoveryAgent'
 
 const logger = createLogger('scraper-orchestrator')
 
-// Concurrency cap for Claude scoring calls (EDGE-004)
-const SCORE_CONCURRENCY = 5
+// Concurrency cap for Groq scoring calls — keep low to avoid OOM in dev
+const SCORE_CONCURRENCY = 2
+// Max jobs to score per discovery run (memory guard)
+const MAX_JOBS_TO_SCORE = 40
+// Max jobs to accept from each scraper
+const MAX_PER_SOURCE = 15
 
 async function withConcurrency<T>(
   items: T[],
@@ -67,7 +71,8 @@ export async function runDiscovery(
         return [] as RawJob[]
       }
       logger.info('Running scraper', { source })
-      return scraper.fetchJobs(profile)
+      const jobs = await scraper.fetchJobs(profile)
+      return jobs.slice(0, MAX_PER_SOURCE)
     })
   )
 
@@ -80,7 +85,7 @@ export async function runDiscovery(
     }
   }
 
-  const deduped = deduplicateByUrl(rawJobs)
+  const deduped = deduplicateByUrl(rawJobs).slice(0, MAX_JOBS_TO_SCORE)
   logger.info('Discovery deduplication complete', {
     raw: rawJobs.length,
     deduped: deduped.length,
@@ -92,9 +97,9 @@ export async function runDiscovery(
   await withConcurrency(deduped, SCORE_CONCURRENCY, async (job: RawJob) => {
     try {
       const matchOutput = await scoreJobMatch(
-        candidateProfileText,
+        candidateProfileText.slice(0, 2000),
         job.title,
-        job.description,
+        (job.description ?? '').slice(0, 1500),
         profile.targetLocations[0] ?? 'India',
       )
       const match = matchOutput.result

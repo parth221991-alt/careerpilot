@@ -54,5 +54,6 @@ export async function POST(req: NextRequest) {
     draft: draftOutput.result,
     subject: `Following up: ${application.job.title} at ${application.job.company}`,
     applicationId: application.id,
+    threadId: application.emailThreads[0]?.id ?? null,
   })
 }

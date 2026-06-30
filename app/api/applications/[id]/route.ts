@@ -6,7 +6,7 @@ import type { AppStatus } from '@prisma/client'
 
 const VALID_TRANSITIONS: Record<AppStatus, AppStatus[]> = {
   SAVED:            ['APPROVAL_PENDING', 'APPLIED', 'WITHDRAWN'],  // SAVED → APPLIED for LinkedIn manual submit
-  APPROVAL_PENDING: ['APPLIED', 'WITHDRAWN'],
+  APPROVAL_PENDING: ['SAVED', 'APPLIED', 'WITHDRAWN'],  // SAVED: gate expired path
   APPLIED:          ['HR_ROUND', 'REJECTED', 'WITHDRAWN'],
   HR_ROUND:         ['TECHNICAL_ROUND', 'REJECTED', 'WITHDRAWN'],
   TECHNICAL_ROUND:  ['MANAGER_ROUND', 'REJECTED', 'WITHDRAWN'],

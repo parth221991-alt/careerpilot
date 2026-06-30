@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
-import { Linkedin, X, Copy, CheckCircle, AlertTriangle, Loader2 } from 'lucide-react'
+import { Linkedin, X, Copy, CheckCircle, AlertTriangle, Loader2, ExternalLink } from 'lucide-react'
 import type { ApplyAnswers } from '@/types/agents'
 
 type Props = {
@@ -10,14 +10,16 @@ type Props = {
   applicationId: string
   profileId?: string
   platform: string
+  jobUrl?: string
 }
 
-export function LinkedInApplyPanel({ jobId, applicationId, profileId, platform }: Props) {
+export function LinkedInApplyPanel({ jobId, applicationId, profileId, platform, jobUrl }: Props) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [answers, setAnswers] = useState<ApplyAnswers | null>(null)
   const [atsScore, setAtsScore] = useState<number | null>(null)
   const [atsWarning, setAtsWarning] = useState<string | null>(null)
+  const [matchedKeywords, setMatchedKeywords] = useState<string[]>([])
   const [copied, setCopied] = useState<string | null>(null)
   const [error, setError] = useState('')
   // REQ-006: submission confirmation state
@@ -44,6 +46,7 @@ export function LinkedInApplyPanel({ jobId, applicationId, profileId, platform }
       setAnswers(data.answers)
       setAtsScore(data.atsScore)
       setAtsWarning(data.atsWarning)
+      setMatchedKeywords(Array.isArray(data.matchedKeywords) ? data.matchedKeywords as string[] : [])
     } catch {
       setError('Network error — please try again.')
     } finally {
@@ -91,7 +94,7 @@ export function LinkedInApplyPanel({ jobId, applicationId, profileId, platform }
           <Dialog.Overlay className="fixed inset-0 bg-black/60 z-40" />
           <Dialog.Content className="fixed right-0 top-0 bottom-0 w-full max-w-lg bg-background border-l border-border z-50 flex flex-col">
             <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-              <div>
+              <div className="flex-1 min-w-0">
                 <Dialog.Title className="font-chivo font-bold text-foreground text-base">
                   LinkedIn Apply Assistant
                 </Dialog.Title>
@@ -99,8 +102,20 @@ export function LinkedInApplyPanel({ jobId, applicationId, profileId, platform }
                   Copy each field and paste into LinkedIn. CareerPilot never submits for you on LinkedIn.
                 </p>
               </div>
+              {/* REQ-005: Open LinkedIn Job button */}
+              {jobUrl && (
+                <a
+                  href={jobUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-xs bg-[#0077b5] hover:bg-[#006097] text-white px-2.5 py-1.5 rounded-md transition-colors shrink-0"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  Open LinkedIn Job
+                </a>
+              )}
               <Dialog.Close asChild>
-                <button className="text-muted-foreground hover:text-foreground">
+                <button className="text-muted-foreground hover:text-foreground shrink-0">
                   <X className="w-4 h-4" />
                 </button>
               </Dialog.Close>
@@ -129,6 +144,22 @@ export function LinkedInApplyPanel({ jobId, applicationId, profileId, platform }
                 <div className="flex items-center gap-2 p-3 bg-profit/10 border border-profit/30 rounded">
                   <CheckCircle className="w-3.5 h-3.5 text-profit shrink-0" />
                   <p className="text-profit text-xs">ATS match score: {Math.round(atsScore)}%</p>
+                </div>
+              )}
+
+              {/* REQ-005: Matched keywords from tailored resume */}
+              {matchedKeywords.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5">
+                    Injected Keywords ({matchedKeywords.length})
+                  </p>
+                  <div className="flex flex-wrap gap-1">
+                    {matchedKeywords.slice(0, 20).map(kw => (
+                      <span key={kw} className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-600/10 border border-indigo-600/20 text-indigo-400">
+                        {kw}
+                      </span>
+                    ))}
+                  </div>
                 </div>
               )}
 

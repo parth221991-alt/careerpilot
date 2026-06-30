@@ -72,6 +72,7 @@ export default async function ApplicationDetailPage({
                 jobId={job.id}
                 applicationId={application.id}
                 platform={job.platform}
+                jobUrl={job.jobUrl ?? job.url ?? undefined}
               />
             )}
             <Link href="/applications"
@@ -300,7 +301,11 @@ export default async function ApplicationDetailPage({
 
           {/* REQ-016 (email spec): Send Follow-up — only shown when application is ghosted */}
           {application.ghostedAt && (
-            <FollowUpPanel applicationId={application.id} ghostedAt={application.ghostedAt} />
+            <FollowUpPanel
+              applicationId={application.id}
+              ghostedAt={application.ghostedAt}
+              recipientEmail={application.emailThreads[0]?.fromEmail ?? undefined}
+            />
           )}
 
           {/* Notes */}

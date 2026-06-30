@@ -17,7 +17,8 @@ export function ApprovalQueue({ applications }: Props) {
 
   async function handleApprove(appId: string) {
     setLoading(prev => ({ ...prev, [appId]: 'approve' }))
-    await fetch(`/api/applications/${appId}/approve`, { method: 'POST' })
+    // REQ-021: spec mandates /api/apply/[id]/approve — this route enqueues the worker without prematurely setting APPLIED
+    await fetch(`/api/apply/${appId}/approve`, { method: 'POST' })
     setDone(prev => new Set([...prev, appId]))
     setLoading(prev => ({ ...prev, [appId]: null }))
   }
@@ -49,7 +50,19 @@ export function ApprovalQueue({ applications }: Props) {
             <div key={app.id} className="bg-card border border-border rounded-lg p-4 flex items-center gap-4">
               <div className="flex-1 min-w-0">
                 <p className="text-foreground font-medium text-sm">{app.job.title}</p>
-                <p className="text-muted-foreground text-xs">{app.job.company} · {app.job.platform}</p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <p className="text-muted-foreground text-xs">{app.job.company} · {app.job.platform}</p>
+                  {/* REQ-021: ATS score in approval row */}
+                  {app.atsScore != null && (
+                    <span className={`text-[10px] font-mono font-bold numeric px-1.5 py-0.5 rounded border ${
+                      app.atsScore >= 65
+                        ? 'text-profit border-profit/30 bg-profit/5'
+                        : 'text-amber-400 border-amber-400/30 bg-amber-400/5'
+                    }`}>
+                      ATS {Math.round(app.atsScore)}%
+                    </span>
+                  )}
+                </div>
                 {gate && (
                   <p className="text-muted-foreground text-xs mt-1">
                     Action: <span className="text-foreground">{gate.actionType.replace(/_/g, ' ')}</span>

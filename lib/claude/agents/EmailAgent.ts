@@ -13,7 +13,7 @@ Subject: ${subject}
 From: ${sender}
 Body: ${body.slice(0, 1500)}
 
-Return JSON: { "classification": "INTERVIEW_INVITE|REJECTION|ASSESSMENT|OFFER|FOLLOW_UP|GENERAL", "confidence": 0.0-1.0, "company": "", "role": "", "action_required": true|false, "urgency": "high|medium|low", "summary": "one sentence" }`
+Return JSON: { "classification": "INTERVIEW_INVITE|REJECTION|ASSESSMENT|OFFER|FOLLOW_UP|FOLLOW_UP_NEEDED|GHOSTED|GENERAL", "confidence": 0.0-1.0, "company": "", "role": "", "action_required": true|false, "urgency": "high|medium|low", "summary": "one sentence" }`
 
   const response = await anthropic.messages.create({
     model: THROUGHPUT_MODEL,

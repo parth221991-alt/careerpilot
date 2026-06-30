@@ -9,6 +9,38 @@ import { createLogger } from '@/lib/utils/logger'
 
 const logger = createLogger('vault-upload')
 
+const VALID_SKILL_CATS = new Set(['LANGUAGE', 'FRAMEWORK', 'CLOUD', 'DATABASE', 'TOOL', 'METHODOLOGY', 'SOFT'])
+const SKILL_CAT_ALIASES: Record<string, string> = {
+  PROGRAMMING: 'LANGUAGE', PROGRAMMING_LANGUAGE: 'LANGUAGE', SCRIPTING: 'LANGUAGE', MARKUP: 'LANGUAGE',
+  LIBRARY: 'FRAMEWORK', LIBRARIES: 'FRAMEWORK', RUNTIME: 'FRAMEWORK', PLATFORM: 'FRAMEWORK',
+  DEVOPS: 'TOOL', CI_CD: 'TOOL', TESTING: 'TOOL', TOOL_AND_TECHNOLOGY: 'TOOL', TOOLS: 'TOOL',
+  INFRASTRUCTURE: 'CLOUD', AWS: 'CLOUD', AZURE: 'CLOUD', GCP: 'CLOUD',
+  DATABASES: 'DATABASE', DATA: 'DATABASE', STORAGE: 'DATABASE',
+  PROCESS: 'METHODOLOGY', AGILE: 'METHODOLOGY', MANAGEMENT: 'METHODOLOGY',
+  INTERPERSONAL: 'SOFT', COMMUNICATION: 'SOFT', LEADERSHIP: 'SOFT',
+}
+function normalizeSkillCat(raw: string): string {
+  const upper = raw?.toUpperCase().replace(/[^A-Z_]/g, '_') ?? 'TOOL'
+  if (VALID_SKILL_CATS.has(upper)) return upper
+  return SKILL_CAT_ALIASES[upper] ?? 'TOOL'
+}
+
+const VALID_PROFICIENCIES = new Set(['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'EXPERT'])
+function normalizeProficiency(raw: string): string {
+  const upper = raw?.toUpperCase() ?? 'INTERMEDIATE'
+  if (VALID_PROFICIENCIES.has(upper)) return upper
+  if (upper.includes('BEGINNER') || upper.includes('BASIC') || upper.includes('JUNIOR')) return 'BEGINNER'
+  if (upper.includes('EXPERT') || upper.includes('SENIOR') || upper.includes('MASTER')) return 'EXPERT'
+  if (upper.includes('ADVANCED')) return 'ADVANCED'
+  return 'INTERMEDIATE'
+}
+
+function safeDate(val: string | null | undefined, fallback?: Date): Date | null {
+  if (!val) return fallback ?? null
+  const d = new Date(val)
+  return isNaN(d.getTime()) ? (fallback ?? null) : d
+}
+
 export const runtime = 'nodejs'
 export const maxDuration = 120
 
@@ -81,8 +113,8 @@ export async function POST(req: NextRequest) {
         company: e.company,
         title: e.title,
         location: e.location,
-        startDate: new Date(e.startDate),
-        endDate: e.endDate ? new Date(e.endDate) : null,
+        startDate: safeDate(e.startDate) ?? new Date('2000-01-01'),
+        endDate: safeDate(e.endDate),
         isCurrent: e.isCurrent,
         description: e.description,
         bullets: e.bullets,
@@ -110,8 +142,8 @@ export async function POST(req: NextRequest) {
       data: extraction.skills.map(s => ({
         careerProfileId: profile.id,
         name: s.name,
-        category: s.category,
-        proficiency: s.proficiency,
+        category: normalizeSkillCat(s.category) as 'LANGUAGE' | 'FRAMEWORK' | 'CLOUD' | 'DATABASE' | 'TOOL' | 'METHODOLOGY' | 'SOFT',
+        proficiency: normalizeProficiency(s.proficiency) as 'BEGINNER' | 'INTERMEDIATE' | 'ADVANCED' | 'EXPERT',
         yearsUsed: s.yearsUsed ?? null,
       })),
       skipDuplicates: true,
@@ -124,8 +156,8 @@ export async function POST(req: NextRequest) {
         careerProfileId: profile.id,
         name: c.name,
         issuer: c.issuer,
-        issuedAt: new Date(c.issuedAt),
-        expiresAt: c.expiresAt ? new Date(c.expiresAt) : null,
+        issuedAt: safeDate(c.issuedAt) ?? new Date(),
+        expiresAt: safeDate(c.expiresAt),
         credentialUrl: c.credentialUrl ?? null,
       })),
     })
@@ -138,7 +170,7 @@ export async function POST(req: NextRequest) {
         title: a.title,
         description: a.description,
         impact: a.impact ?? null,
-        date: new Date(a.date),
+        date: safeDate(a.date) ?? new Date(),
       })),
     })
 

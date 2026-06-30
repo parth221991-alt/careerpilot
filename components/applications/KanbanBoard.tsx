@@ -1,6 +1,7 @@
 import type { Application, Job, ApprovalGate, StatusHistory, AppStatus } from '@prisma/client'
 import { cn } from '@/lib/utils/cn'
 import { formatDistanceToNow } from 'date-fns'
+import { Ghost } from 'lucide-react'
 
 type AppWithRelations = Application & {
   job: Job
@@ -81,6 +82,13 @@ function ApplicationCard({ app }: { app: AppWithRelations }) {
             <span className="text-[10px] text-yellow-400 font-medium">! Approval</span>
           )}
         </div>
+        {/* REQ-016: Ghost indicator — visible on list, full panel on detail page */}
+        {app.ghostedAt && (
+          <div className="mt-2 flex items-center gap-1 text-[10px] text-amber-400 border border-amber-500/20 rounded px-1.5 py-0.5 bg-amber-500/5">
+            <Ghost className="w-2.5 h-2.5 shrink-0" />
+            <span>Ghosted · Follow up needed</span>
+          </div>
+        )}
       </div>
     </a>
   )

@@ -15,7 +15,13 @@ export async function GET() {
       select: {
         id: true, subject: true, fromEmail: true, classification: true,
         urgency: true, summary: true, isRead: true, lastEmailAt: true,
-        applicationId: true, draftReply: true, followUpSentAt: true,
+        applicationId: true, draftReply: true, followUpSentAt: true, matchAmbiguous: true,
+        // REQ-018: include company+role from linked application
+        application: {
+          select: {
+            job: { select: { title: true, company: true } },
+          },
+        },
       },
     }),
     createClient(),

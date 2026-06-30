@@ -4,7 +4,8 @@ import { PageHeader } from '@/components/shared/PageHeader'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { KanbanBoard } from '@/components/applications/KanbanBoard'
 import { ApprovalQueue } from '@/components/applications/ApprovalQueue'
-import { ClipboardList } from 'lucide-react'
+import { ClipboardList, LayoutGrid, Clock } from 'lucide-react'
+import Link from 'next/link'
 import type { AppStatus } from '@prisma/client'
 
 const PIPELINE_STAGES: AppStatus[] = [
@@ -51,6 +52,8 @@ export default async function ApplicationsPage({
     )
   }
 
+  const activeTab = sp.filter === 'approvals' ? 'approvals' : 'pipeline'
+
   return (
     <div>
       <PageHeader
@@ -58,17 +61,60 @@ export default async function ApplicationsPage({
         subtitle={`${applications.length} total · ${pendingApprovals.length} pending approval`}
       />
 
-      {sp.filter === 'approvals' || pendingApprovals.length > 0 ? (
+      {/* REQ-021: Tab navigation — Pipeline | Awaiting Approval */}
+      <div className="border-b border-border px-6">
+        <div className="flex gap-0">
+          <Link
+            href="/applications"
+            className={`flex items-center gap-1.5 px-4 py-3 text-xs font-medium border-b-2 transition-colors ${
+              activeTab === 'pipeline'
+                ? 'border-indigo-500 text-foreground'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <LayoutGrid className="w-3.5 h-3.5" />
+            Pipeline
+          </Link>
+          <Link
+            href="/applications?filter=approvals"
+            className={`flex items-center gap-1.5 px-4 py-3 text-xs font-medium border-b-2 transition-colors ${
+              activeTab === 'approvals'
+                ? 'border-indigo-500 text-foreground'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Clock className="w-3.5 h-3.5" />
+            Awaiting Approval
+            {pendingApprovals.length > 0 && (
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+                activeTab === 'approvals'
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-yellow-400/20 text-yellow-400'
+              }`}>
+                {pendingApprovals.length}
+              </span>
+            )}
+          </Link>
+        </div>
+      </div>
+
+      {activeTab === 'approvals' ? (
+        <div className="p-6">
+          {pendingApprovals.length === 0 ? (
+            <EmptyState
+              icon={Clock}
+              title="No pending approvals"
+              description="Auto-apply jobs awaiting your review will appear here."
+            />
+          ) : (
+            <ApprovalQueue applications={pendingApprovals} />
+          )}
+        </div>
+      ) : (
         <div className="p-6 space-y-6">
           {pendingApprovals.length > 0 && (
             <ApprovalQueue applications={pendingApprovals} />
           )}
-          {sp.filter !== 'approvals' && (
-            <KanbanBoard grouped={grouped} stages={PIPELINE_STAGES} />
-          )}
-        </div>
-      ) : (
-        <div className="p-6">
           <KanbanBoard grouped={grouped} stages={PIPELINE_STAGES} />
         </div>
       )}

@@ -20,6 +20,8 @@ type Thread = {
   applicationId: string | null
   draftReply: string | null
   followUpSentAt: string | null
+  matchAmbiguous: boolean
+  application: { job: { title: string; company: string } } | null
 }
 
 type ApplicationOption = {
@@ -274,8 +276,20 @@ export default function EmailPage() {
                       UNMATCHED
                     </span>
                   )}
+                  {/* EDGE-001: ambiguous match warning */}
+                  {thread.matchAmbiguous && thread.applicationId && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded font-medium text-yellow-400 bg-yellow-400/10 border border-yellow-400/20">
+                      Ambiguous match — verify link
+                    </span>
+                  )}
                 </div>
                 <p className="text-muted-foreground text-xs mt-0.5">{thread.fromEmail}</p>
+                {/* REQ-018: company + role linked to matched Application */}
+                {thread.application && (
+                  <p className="text-indigo-400 text-xs mt-0.5">
+                    {thread.application.job.company} · {thread.application.job.title}
+                  </p>
+                )}
                 {thread.summary && (
                   <p className="text-muted-foreground text-xs mt-1.5 line-clamp-2">{thread.summary}</p>
                 )}
@@ -303,9 +317,10 @@ export default function EmailPage() {
                   </button>
                 )}
 
-                {/* Follow-up button */}
+                {/* REQ-018: Draft Reply button on all classified matched threads */}
                 {thread.applicationId &&
-                  ['FOLLOW_UP_NEEDED', 'GHOSTED'].includes(thread.classification ?? '') &&
+                  thread.classification &&
+                  thread.classification !== 'GENERAL' &&
                   !thread.followUpSentAt && (
                     <button
                       onClick={() => handleFollowUp(thread)}
@@ -313,7 +328,7 @@ export default function EmailPage() {
                       className="flex items-center gap-1 text-[10px] bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white px-2 py-1 rounded transition-colors"
                     >
                       <Send className="w-2.5 h-2.5" />
-                      {sendingFollowUp === thread.id ? 'Drafting...' : 'Draft Follow-up'}
+                      {sendingFollowUp === thread.id ? 'Drafting...' : 'Draft Reply'}
                     </button>
                   )}
 

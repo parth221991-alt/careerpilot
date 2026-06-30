@@ -32,9 +32,12 @@ export async function POST(
   const gate = application.approvalGates[0]
   if (!gate) return NextResponse.json({ error: 'No pending approval gate' }, { status: 400 })
 
-  // Check gate not expired
+  // Check gate not expired — REQ-010: on expiry, gate → EXPIRED, application → SAVED
   if (gate.expiresAt < new Date()) {
-    await prisma.approvalGate.update({ where: { id: gate.id }, data: { status: 'EXPIRED' } })
+    await prisma.$transaction([
+      prisma.approvalGate.update({ where: { id: gate.id }, data: { status: 'EXPIRED' } }),
+      prisma.application.update({ where: { id: applicationId }, data: { status: 'SAVED' } }),
+    ])
     return NextResponse.json({ error: 'Approval gate expired' }, { status: 400 })
   }
 

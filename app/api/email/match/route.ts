@@ -20,6 +20,8 @@ const STATUS_ORDER: AppStatus[] = [
   'TECHNICAL_ROUND', 'MANAGER_ROUND', 'OFFER', 'ACCEPTED', 'REJECTED', 'WITHDRAWN',
 ]
 
+const EMAIL_PROTECTED_STATUSES = new Set<AppStatus>(['OFFER', 'ACCEPTED', 'REJECTED', 'WITHDRAWN'])
+
 export async function POST(req: NextRequest) {
   const userId = await getUserId()
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -51,7 +53,7 @@ export async function POST(req: NextRequest) {
     const currentIdx = STATUS_ORDER.indexOf(application.status)
     const targetIdx = STATUS_ORDER.indexOf(targetStatus)
 
-    if (targetIdx > currentIdx) {
+    if (targetIdx > currentIdx && !EMAIL_PROTECTED_STATUSES.has(application.status)) {
       await prisma.$transaction([
         prisma.application.update({ where: { id: applicationId }, data: { status: targetStatus } }),
         prisma.statusHistory.create({

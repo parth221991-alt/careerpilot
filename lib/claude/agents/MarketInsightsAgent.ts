@@ -96,6 +96,8 @@ export function computeMarketHeat(today: number, sevenDayAvg: number): MarketHea
 type InsightContext = {
   analytics: MarketIntelligence
   resumeText: string
+  hasResume: boolean   // EDGE-001: false when user has no active resumes
+  hasProfile: boolean  // EDGE-002: false when user has no active job profile
   targetRoles: string[]
   profileSalaryMin: number | null
   profileSalaryMax: number | null
@@ -105,7 +107,7 @@ type InsightContext = {
 }
 
 const PLACEHOLDER_SIGNAL = (type: MarketSignal['type'], label: string, icon: string): MarketSignal => ({
-  type, label, value: 'Discover more jobs to unlock this insight.', icon,
+  type, label, value: 'Not enough data yet — discover more jobs.', icon,
 })
 
 export async function generateMarketInsights(
@@ -190,8 +192,22 @@ export async function generateMarketInsights(
     throw new Error(`Claude response failed validation: ${parsed.error.message}`)
   }
 
+  const signals = parsed.data.signals
+
+  // EDGE-001: no resume — override skill_gap with exact spec string
+  if (!ctx.hasResume) {
+    const s = signals.find(sig => sig.type === 'skill_gap')
+    if (s) s.value = 'Upload a resume to detect skill gaps.'
+  }
+
+  // EDGE-002: no job profile — override salary_positioning with exact spec string
+  if (!ctx.hasProfile) {
+    const s = signals.find(sig => sig.type === 'salary_positioning')
+    if (s) s.value = 'Create a Job Profile to see salary positioning.'
+  }
+
   return {
-    result: parsed.data.signals,
+    result: signals,
     reasoning: 'Market insights generated from discovered job data.',
     tokensUsed: response.usage.input_tokens + response.usage.output_tokens,
     model: THROUGHPUT_MODEL,

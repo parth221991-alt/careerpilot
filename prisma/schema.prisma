@@ -492,6 +492,7 @@ model EmailThread {
   rawContent      String?        @map("raw_content") @db.Text
   draftReply      String?        @map("draft_reply") @db.Text
   followUpSentAt  DateTime?      @map("follow_up_sent_at") @db.Timestamptz(6)
+  matchAmbiguous  Boolean        @default(false) @map("match_ambiguous")
   createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
 
   user        User         @relation(fields: [userId], references: [id])

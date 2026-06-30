@@ -16,6 +16,9 @@ const STATUS_ORDER: AppStatus[] = [
   'TECHNICAL_ROUND', 'MANAGER_ROUND', 'OFFER', 'ACCEPTED', 'REJECTED', 'WITHDRAWN',
 ]
 
+// EDGE-002: These statuses are protected — email detection must not transition away from them
+const EMAIL_PROTECTED_STATUSES = new Set<AppStatus>(['OFFER', 'ACCEPTED', 'REJECTED', 'WITHDRAWN'])
+
 function statusIndex(s: AppStatus): number {
   return STATUS_ORDER.indexOf(s)
 }
@@ -33,7 +36,7 @@ async function matchToApplication(
   body: string,
   classificationCompany: string,
   classificationRole: string,
-): Promise<{ applicationId: string; confidence: number } | null> {
+): Promise<{ applicationId: string; confidence: number; ambiguous: boolean } | null> {
   const applications = await prisma.application.findMany({
     where: {
       userId,
@@ -48,6 +51,7 @@ async function matchToApplication(
 
   const searchText = `${subject} ${body}`.toLowerCase()
   let bestMatch: { applicationId: string; confidence: number } | null = null
+  let highConfidenceCount = 0
 
   for (const app of applications) {
     let confidence = 0
@@ -74,12 +78,16 @@ async function matchToApplication(
       confidence += 0.1
     }
 
+    // EDGE-001: count all high-confidence matches to detect ambiguity
+    if (confidence >= 0.7) highConfidenceCount++
+
     if (confidence > (bestMatch?.confidence ?? 0)) {
       bestMatch = { applicationId: app.id, confidence }
     }
   }
 
-  return bestMatch && bestMatch.confidence >= 0.7 ? bestMatch : null
+  if (!bestMatch || bestMatch.confidence < 0.7) return null
+  return { ...bestMatch, ambiguous: highConfidenceCount > 1 }
 }
 
 async function advanceFsm(
@@ -94,7 +102,13 @@ async function advanceFsm(
   const currentIdx = statusIndex(app.status)
   const targetIdx = statusIndex(targetStatus)
 
-  // Never regress (REQ-012, EDGE-002)
+  // EDGE-002: Never transition away from terminal/protected statuses via email
+  if (EMAIL_PROTECTED_STATUSES.has(app.status)) {
+    logger.warn('FSM anomaly blocked — protected status', { applicationId, from: app.status, to: targetStatus })
+    return
+  }
+
+  // REQ-012: Never regress status
   if (targetIdx <= currentIdx) {
     logger.warn('FSM regress blocked', { applicationId, from: app.status, to: targetStatus })
     return
@@ -175,6 +189,7 @@ export async function POST(_req: NextRequest) {
           isRead: false,
           rawContent: thread.body.slice(0, 4000),
           applicationId: match?.applicationId ?? null,
+          matchAmbiguous: match?.ambiguous ?? false,
         }
 
         if (existing) {
@@ -196,6 +211,25 @@ export async function POST(_req: NextRequest) {
               `${thread.subject} [${classification.classification}]`,
             )
             fsmAdvanced++
+          }
+
+          // GHOSTED via email classification (REQ-010): set ghostedAt + alert notification
+          if (classification.classification === 'GHOSTED') {
+            await prisma.$transaction([
+              prisma.application.update({
+                where: { id: match.applicationId },
+                data: { ghostedAt: new Date() },
+              }),
+              prisma.notification.create({
+                data: {
+                  userId,
+                  type: 'GHOSTED_ALERT',
+                  title: `No reply detected — ${classification.company}`,
+                  body: classification.summary,
+                  extra: { applicationId: match.applicationId, urgency: classification.urgency },
+                },
+              }),
+            ])
           }
 
           // Notifications for non-FSM classifications

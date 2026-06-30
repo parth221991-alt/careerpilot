@@ -45,8 +45,14 @@ Return valid JSON matching CareerVaultExtraction schema:
   const jsonStr = raw.startsWith('```') ? raw.split('```')[1].replace(/^json\n?/, '') : raw
   const extracted: CareerVaultExtraction = JSON.parse(jsonStr)
 
-  // Embed all text-rich entities into Qdrant
-  await embedAndStoreVaultEntities(userId, extracted)
+  // Embed into Qdrant — skip silently if Voyage AI key or Qdrant is unavailable
+  if (process.env.VOYAGE_API_KEY) {
+    try {
+      await embedAndStoreVaultEntities(userId, extracted)
+    } catch (e) {
+      console.warn('[vault] Embedding skipped:', (e as Error).message)
+    }
+  }
 
   return {
     result: extracted,

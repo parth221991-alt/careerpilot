@@ -170,12 +170,13 @@ const worker = new Worker<ApplyJob>(
     const dailyLimit = await getDailyLimit(applicantData as Record<string, string>)
     const withinLimit = await checkDailyLimit(userId, dailyLimit)
     if (!withinLimit) {
-      // Delay to next day 9:00 AM IST (REQ-009)
+      // REQ-009: Delay to next day 9:00 AM IST via BullMQ delay option (not a retry)
       const tomorrow = new Date()
       tomorrow.setDate(tomorrow.getDate() + 1)
       tomorrow.setHours(9, 0, 0, 0)
-      const delayMs = tomorrow.getTime() - Date.now()
-      throw new Error(`Daily apply limit reached. Job delayed by ${Math.round(delayMs / 60000)} minutes.`)
+      logger.info('Daily apply limit reached — delaying job to 9AM IST', { userId, nextRun: tomorrow.toISOString() })
+      await job.moveToDelayed(tomorrow.getTime(), job.token)
+      return
     }
 
     // Load session (REQ-017: from Supabase Storage)

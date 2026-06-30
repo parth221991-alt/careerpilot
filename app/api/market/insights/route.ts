@@ -30,7 +30,9 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const [analytics, resumes, profiles, sevenDayCount] = await Promise.all([
+    const windowStart = new Date(Date.now() - cfg.heat_window_days * 24 * 60 * 60 * 1000)
+
+    const [analytics, resumes, profiles, sevenDayCount, firstJobInWindow] = await Promise.all([
       computeMarketIntelligence(userId),
       prisma.baseResume.findMany({
         where: { userId, isActive: true },
@@ -43,21 +45,31 @@ export async function GET(req: NextRequest) {
         take: 1,
       }),
       prisma.job.count({
-        where: {
-          userId,
-          isActive: true,
-          discoveredAt: { gte: new Date(Date.now() - cfg.heat_window_days * 24 * 60 * 60 * 1000) },
-        },
+        where: { userId, isActive: true, discoveredAt: { gte: windowStart } },
+      }),
+      // EDGE-005: find earliest job in window to compute actual days of data
+      prisma.job.findFirst({
+        where: { userId, isActive: true, discoveredAt: { gte: windowStart } },
+        orderBy: { discoveredAt: 'asc' },
+        select: { discoveredAt: true },
       }),
     ])
 
     const resumeText = resumes.map(r => r.rawText ?? '').join('\n')
     const profile = profiles[0]
-    const sevenDayAvg = sevenDayCount / cfg.heat_window_days
+
+    // EDGE-005: use actual days of data (not always 7) to avoid inflated averages; never divide by zero
+    const daysWithData = firstJobInWindow
+      ? Math.max(1, Math.ceil((Date.now() - firstJobInWindow.discoveredAt.getTime()) / 86_400_000))
+      : 1
+    const actualDays = Math.min(cfg.heat_window_days, daysWithData)
+    const sevenDayAvg = sevenDayCount / actualDays
 
     const output = await generateMarketInsights({
       analytics,
       resumeText,
+      hasResume: resumes.length > 0,        // EDGE-001
+      hasProfile: profiles.length > 0,       // EDGE-002
       targetRoles: profile?.targetRoles ?? [],
       profileSalaryMin: profile?.salaryMin ?? null,
       profileSalaryMax: profile?.salaryMax ?? null,
